@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-deepseek/deepseek"
 	"github.com/go-deepseek/deepseek/request"
+	"github.com/go-deepseek/deepseek/response"
 )
 
 const DEEPSEEK_API_KEY = `sk-123cd456c78d9be0b123de45cf6789b0` // replace with valid one
@@ -34,19 +35,27 @@ func main() {
 		}
 
 		fmt.Println("stream=false")
-		callChat(client, inMsg)
+		callChat(client, "deepseek-chat", inMsg)
 		fmt.Println()
 
 		fmt.Println("stream=true")
-		streamChat(client, inMsg)
+		streamChat(client, "deepseek-chat", inMsg)
 		fmt.Println()
+
+		// fmt.Println("stream=false")
+		// callChat(client, "deepseek-reasoner", inMsg)
+		// fmt.Println()
+
+		// fmt.Println("stream=true")
+		// streamChat(client, "deepseek-reasoner", inMsg)
+		// fmt.Println()
 	}
 
 }
 
-func callChat(client deepseek.Client, inMsg string) {
+func callChat(client deepseek.Client, model, inMsg string) {
 	req := &request.ChatCompletionsRequest{
-		Model: "deepseek-chat",
+		Model: model,
 		Messages: []*request.Message{
 			{
 				Role:    "user",
@@ -55,16 +64,28 @@ func callChat(client deepseek.Client, inMsg string) {
 		},
 		Stream: false,
 	}
-	resp, err := client.CallChatCompletionsChat(req)
+
+	var resp *response.ChatCompletionsResponse
+	var err error
+	if model == "deepseek-chat" {
+		resp, err = client.CallChatCompletionsChat(req)
+	} else {
+		resp, err = client.CallChatCompletionsReasoner(req)
+	}
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(resp.Choices[0].Message.Content)
+	if model == "deepseek-reasoner" {
+		fmt.Println()
+		fmt.Print(resp.Choices[0].Message.Content)
+	}
 }
 
-func streamChat(client deepseek.Client, inMsg string) {
+func streamChat(client deepseek.Client, model, inMsg string) {
 	req := &request.ChatCompletionsRequest{
-		Model: "deepseek-chat",
+		Model: model,
 		Messages: []*request.Message{
 			{
 				Role:    "user",
@@ -73,7 +94,14 @@ func streamChat(client deepseek.Client, inMsg string) {
 		},
 		Stream: true,
 	}
-	sr, err := client.StreamChatCompletionsChat(req)
+
+	var sr response.StreamReader
+	var err error
+	if model == "deepseek-chat" {
+		sr, err = client.StreamChatCompletionsChat(req)
+	} else {
+		sr, err = client.StreamChatCompletionsReasoner(req)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -86,6 +114,10 @@ func streamChat(client deepseek.Client, inMsg string) {
 			}
 			panic(err)
 		}
-		fmt.Print(resp.Choices[0].Delta.Content)
+		if resp.Choices[0].Delta.Content != "" {
+			fmt.Print(resp.Choices[0].Delta.Content)
+		} else {
+			fmt.Print(resp.Choices[0].Delta.ReasoningContent)
+		}
 	}
 }
