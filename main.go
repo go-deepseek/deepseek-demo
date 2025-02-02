@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/go-deepseek/deepseek"
+	"github.com/go-deepseek/deepseek/config"
 	"github.com/go-deepseek/deepseek/request"
 	"github.com/go-deepseek/deepseek/response"
 )
@@ -15,7 +17,14 @@ import (
 const DEEPSEEK_API_KEY = `sk-123cd456c78d9be0b123de45cf6789b0` // replace with valid one
 
 func main() {
-	client := deepseek.NewClientWithTimeout(DEEPSEEK_API_KEY, 120)
+	config := config.Config{
+		ApiKey:         DEEPSEEK_API_KEY,
+		TimeoutSeconds: 120,
+	}
+	client, err := deepseek.NewClientWithConfig(config)
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("This is demo for deepseek.  Type `bye` to exit.")
 
@@ -68,9 +77,11 @@ func callChat(client deepseek.Client, model, inMsg string) {
 	var resp *response.ChatCompletionsResponse
 	var err error
 	if model == "deepseek-chat" {
-		resp, err = client.CallChatCompletionsChat(req)
+		ctx := context.Background()
+		// ctx, _ = context.WithTimeout(ctx, time.Second*2)
+		resp, err = client.CallChatCompletionsChat(ctx, req)
 	} else {
-		resp, err = client.CallChatCompletionsReasoner(req)
+		resp, err = client.CallChatCompletionsReasoner(context.Background(), req)
 	}
 	if err != nil {
 		panic(err)
@@ -98,9 +109,9 @@ func streamChat(client deepseek.Client, model, inMsg string) {
 	var sr response.StreamReader
 	var err error
 	if model == "deepseek-chat" {
-		sr, err = client.StreamChatCompletionsChat(req)
+		sr, err = client.StreamChatCompletionsChat(context.Background(), req)
 	} else {
-		sr, err = client.StreamChatCompletionsReasoner(req)
+		sr, err = client.StreamChatCompletionsReasoner(context.Background(), req)
 	}
 	if err != nil {
 		panic(err)
